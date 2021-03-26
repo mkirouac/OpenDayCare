@@ -1,3 +1,6 @@
+/*
+* Deployment definition for the Repository Database
+*/
 import * as k8s from "@pulumi/kubernetes";
 import { ConfigMap, LimitRangeList } from "@pulumi/kubernetes/core/v1";
 import { Service } from "@pulumi/kubernetes/core/v1";
@@ -10,7 +13,7 @@ const appLabels = { app: "mysql" };
 const FLYWAY_SCRIPTS_DIRECTORY = "scripts/schema";
 
 /*
-* VM for debugging
+* VM used for debugging purposes.
 */ 
 const debuggingVm = new k8s.apps.v1.Deployment("debuggingvm", {
     metadata:{name: "debuggingvm"},
@@ -32,6 +35,9 @@ const debuggingVm = new k8s.apps.v1.Deployment("debuggingvm", {
 });
 
 //init.db config-map
+/*
+* init.db config-map. Defines the scripts which will be executed upon database creation.
+*/
 const initdbConfigMap = new k8s.core.v1.ConfigMap("mysql-initdb-config", {
 	metadata:{
 		name: "mysql-initdb-config",
@@ -42,7 +48,9 @@ const initdbConfigMap = new k8s.core.v1.ConfigMap("mysql-initdb-config", {
 	},
 });
 
-//persitent-volume
+/*
+* Persistent volume to store the database files
+*/
 const pv = new k8s.core.v1.PersistentVolume("mysql-persistent-volume", {
 	apiVersion: "v1",
 	kind: "PersistentVolume",
@@ -63,7 +71,9 @@ const pv = new k8s.core.v1.PersistentVolume("mysql-persistent-volume", {
 	}
 });
 
-//persitent-volume for backups
+/*
+* Persistent volume to store the database backups. It's accessible by both MySql database and the backup cron job.
+*/
 const pvBackups = new k8s.core.v1.PersistentVolume("mysql-persistent-volume-backups", {
 	apiVersion: "v1",
 	kind: "PersistentVolume",
@@ -84,7 +94,9 @@ const pvBackups = new k8s.core.v1.PersistentVolume("mysql-persistent-volume-back
 	}
 });
 
-//persistent-volume-claim
+/*
+* Persistent volume claim for mysql-persistent-volume 
+*/
 const pvc = new k8s.core.v1.PersistentVolumeClaim("mysql-persistent-volume-claim", {
 	apiVersion: "v1",
 	kind: "PersistentVolumeClaim",
@@ -98,7 +110,9 @@ const pvc = new k8s.core.v1.PersistentVolumeClaim("mysql-persistent-volume-claim
 	},
 });
 
-//persistent-volume-claim for backups
+/*
+* Persistent volumn claim for mysql-persistent-volume-backups
+*/
 const pvcBackup = new k8s.core.v1.PersistentVolumeClaim("mysql-persistent-volume-claim-backups", {
 	apiVersion: "v1",
 	kind: "PersistentVolumeClaim",
@@ -113,9 +127,9 @@ const pvcBackup = new k8s.core.v1.PersistentVolumeClaim("mysql-persistent-volume
 
 
 /*
-* Deployment
+* Deployment of mysql database 8.0.23
+* TODO Ideally, use a Statefulset instead of a Deployment.
 */
-//TODO Use statefulset instead
 const deployment = new k8s.apps.v1.Deployment("mysql", {
 	spec: {
 		selector: {matchLabels: appLabels},
@@ -124,7 +138,6 @@ const deployment = new k8s.apps.v1.Deployment("mysql", {
 			metadata: { labels: { app: "mysql" } },
 			spec: {
 				containers:[{
-                    //image: "mysql:5.6",
                     image: "mysql:8.0.23",
 					name: "mysql",
 					env: [
@@ -137,25 +150,6 @@ const deployment = new k8s.apps.v1.Deployment("mysql", {
                         {name: "mysql-persistent-storage-backups", mountPath: "/var/lib/backups"},
 						{name: "mysql-initdb", mountPath: "/docker-entrypoint-initdb.d"}
                     ],
-                    /*
-                    livenessProbe: {
-                        exec: { command : ["mysqladmin", "ping"]},
-                        initialDelaySeconds: 30,
-                        periodSeconds: 10,
-                        timeoutSeconds: 5,
-                    },
-                    */
-                   /*
-                    //mysql -h 127.0.0.1 -u root --password='r0oTPa$sword2021' -e 'SELECT 1'
-                    readinessProbe: {
-                        //exec: { command: ["mysql", "-h", "127.0.0.1", "-u", "root", "--password='r0oTPa$sword2021'", "-e", "'SELECT 1'"]  },//TODO Externalize password
-                        //exec: { command: ["mysql -h 127.0.0.1 -u root --password='r0oTPa$sword2021' -e 'SELECT 1'"]  },//TODO Externalize password
-                        tcpSocket: { port:3306 },
-                        initialDelaySeconds: 5,
-                        periodSeconds: 2,
-                        timeoutSeconds: 1,
-                    },
-                    */
 				}],
 				volumes: [
 					{name: "mysql-persistent-storage", persistentVolumeClaim: {claimName: "mysql-persistent-volume-claim"}},
@@ -204,6 +198,7 @@ const loadBalancerIp = new Service("mysql-loadbalancer", {
 
 /*
 * Flyway (SQL Scripts)
+* Defines the scripts used for database schema and data migration.
 */
 
 const flywayScriptsParent = new ConfigMap("flyway-scripts-parent", {}, { dependsOn: deployment });
@@ -213,6 +208,8 @@ const flywayScripts = createFlywaySqlScriptsConfigMaps(FLYWAY_SCRIPTS_DIRECTORY)
 
 /*
 * Flyway (job)
+* A job that will be executed everytime a "pulumi up" command is issues and which will apply the latest migration scripts.
+* If the database is already up to date, this job won't do anything.
 */
 const flywayMigrationJob = new Job("flyway-job", {
     spec: {
@@ -250,34 +247,33 @@ const flywayMigrationJob = new Job("flyway-job", {
 }, {dependsOn: deployment})
 
 /*
-* Backup (job)
+* Backup (job) 
+* Cron job to backup the mysql database. It leverages the same mysql image as the database and executes a "mysqldump" command before exiting the pod.
 */
-
-const backupJob = new Job("backup-job", {
+const backupCronJob = new k8s.batch.v1beta1.CronJob("backup-cron-job", {
     spec: {
-        backoffLimit: 5,//fail after 5 minutes
-        
-        template: {
+        schedule: "	0 * * * *",//Hourly
+        //schedule: "	* * * * *",//Every minute
+        jobTemplate: {
             spec: {
-                containers: [{
-                    name: "backup-" + (Math.floor(Math.random() * 999) + 1),//The name will change every time, thus forcing this job to run along each "pulumi up". Any better way?
-                    image: "mysql:8.0.23", //WORKS but don't exit (obviously..)
-                    //image: "sami/mysql-client",//caching_sha2 error
-                    //image: "imega/mysql-client",//caching_sha2 error
-                    //image: "arey/mysql-client",//caching_sha2 error
-                    //image: "jcabillot/mysql-client",//write permission issue
-                    //image: "baijunyao/mysql-client",//image doesnt exists
-                    //image: "logiqx/mysql-client",
-                    command: ["sh", "-c", "mysqldump -h mysql --port 13306 -u root --password='r0oTPa$sword2021' opendaycare_repo > /var/lib/backups/backup-$(date).sql; exit;"],//TODO mysql hostname
-                    
-					volumeMounts: [
-                        {name: "mysql-persistent-storage-backups", mountPath: "/var/lib/backups"},
-                    ],
-                }],
-				volumes: [
-                    {name: "mysql-persistent-storage-backups", persistentVolumeClaim: {claimName: "mysql-persistent-volume-claim-backups"}},
-				],
-                restartPolicy: "Never"
+                template: {
+                    spec: {
+                        restartPolicy:"Never",
+                        containers: [{
+                            name: "backup-cron-" + (Math.floor(Math.random() * 999) + 1),//The name will change every time, thus forcing this job to run along each "pulumi up". Any better way?
+                            image: "mysql:8.0.23", 
+                            //command: ["sh", "-c", "mysqldump -h mysql --port 13306 -u root --password='r0oTPa$sword2021' opendaycare_repo > /var/lib/backups/\"backup-$(date -u +\"%FT%H%MZ\").sql\"; exit;"],//TODO mysql hostname
+                            command: ["sh", "-c", "mysqldump -h mysql --port 13306 -u backups --password='BacI<upsP@$sword2021' opendaycare_repo > /var/lib/backups/\"backup-$(date -u +\"%FT%H%MZ\").sql\"; exit;"],//TODO mysql hostname
+                            
+                            volumeMounts: [
+                                {name: "mysql-persistent-storage-backups", mountPath: "/var/lib/backups"},
+                            ],
+                        }],
+                        volumes: [
+                            {name: "mysql-persistent-storage-backups", persistentVolumeClaim: {claimName: "mysql-persistent-volume-claim-backups"}},
+                        ],
+                    }
+                }
             }
         }
     }

@@ -2,8 +2,12 @@
 CREATE  OR REPLACE VIEW EmployeeView AS
 SELECT e.idEmployee, p.idPerson, e.employmentDate, p.firstName, p.lastName, p.dateOfBirth, p.registrationDate, p.updatedDate FROM Employee e INNER JOIN Person p on p.idPerson = e.idPerson;
 
+
 CREATE OR REPLACE VIEW KidView AS
-SELECT k.idKid, p.idPerson, p.firstName, p.lastName, p.dateOfBirth, p.registrationDate, p.updatedDate FROM Kid k INNER JOIN Person p on p.idPerson = k.idPerson;
+SELECT k.idKid, p.idPerson, p.firstName, p.lastName, p.dateOfBirth, p.registrationDate, p.updatedDate, 
+	#REGEX 
+	CONCAT( REGEXP_SUBSTR(p.firstName, '.'), '.', REGEXP_SUBSTR(p.lastName, '.'), '.' ) as initials
+	FROM Kid k INNER JOIN Person p on p.idPerson = k.idPerson;
 
 CREATE OR REPLACE VIEW TutorView AS
 SELECT t.idTutor, p.idPerson, p.firstName, p.lastName, p.dateOfBirth, p.registrationDate, p.updatedDate FROM Tutor t INNER JOIN Person p on p.idPerson = t.idPerson;
@@ -39,6 +43,7 @@ SELECT
     k.idKid,
     e.idEmployee
 FROM DayCareGroup g
+	#Multiple join types
 	INNER JOIN DayCareGroupMember gm on gm.idDayCareGroup = g.idDayCareGroup
     INNER JOIN Person p on p.idPerson = gm.idPerson
     LEFT JOIN Kid k on k.idPerson = p.idPerson
@@ -55,3 +60,11 @@ CREATE OR REPLACE VIEW EmployeeSalaryRangeView AS
 #Assumption here that an employee didn't receive a pay decrease
 SELECT idEmployee, firstName, lastName, MIN(hourlyRate) AS initialHourlyRate, MAX(hourlyRate) as currentHourlyRate FROM EmployeeSalaryView v_es 
 	GROUP BY idEmployee, firstName, lastName;
+    
+CREATE OR REPLACE VIEW TutorsWithManyKidsView AS
+SELECT 
+	fv.idTutor, fv.tutorFirstName, fv.tutorLastName, COUNT(fv.idKid) AS kidCount 
+FROM FamilyView fv
+#HAVING 
+GROUP BY fv.tutorFirstName, fv.tutorLastName,  fv.idTutor HAVING COUNT(fv.idKid) > 1
+ORDER BY COUNT(fv.idTutor), fv.tutorFirstName, fv.tutorLastName;

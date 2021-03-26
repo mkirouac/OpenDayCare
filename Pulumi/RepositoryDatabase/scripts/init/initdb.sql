@@ -6,3 +6,6 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON opendaycare_repo.* TO 'application'@'%';
 
 CREATE USER 'reporting'@'%' IDENTIFIED BY 'Rep0rt1ngP@$sword2021';
 GRANT SELECT ON opendaycare_repo.* TO 'reporting'@'%';
+
+CREATE USER 'backups'@'%' IDENTIFIED BY 'BacI<upsP@$sword2021';
+GRANT SELECT, SHOW VIEW, LOCK TABLES, PROCESS ON *.* TO 'backups'@'%';
