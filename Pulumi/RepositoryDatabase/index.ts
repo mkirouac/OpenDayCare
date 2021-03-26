@@ -262,7 +262,6 @@ const backupCronJob = new k8s.batch.v1beta1.CronJob("backup-cron-job", {
                         containers: [{
                             name: "backup-cron-" + (Math.floor(Math.random() * 999) + 1),//The name will change every time, thus forcing this job to run along each "pulumi up". Any better way?
                             image: "mysql:8.0.23", 
-                            //command: ["sh", "-c", "mysqldump -h mysql --port 13306 -u root --password='r0oTPa$sword2021' opendaycare_repo > /var/lib/backups/\"backup-$(date -u +\"%FT%H%MZ\").sql\"; exit;"],//TODO mysql hostname
                             command: ["sh", "-c", "mysqldump -h mysql --port 13306 -u backups --password='BacI<upsP@$sword2021' opendaycare_repo > /var/lib/backups/\"backup-$(date -u +\"%FT%H%MZ\").sql\"; exit;"],//TODO mysql hostname
                             
                             volumeMounts: [
