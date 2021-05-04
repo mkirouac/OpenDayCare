@@ -66,46 +66,46 @@ public abstract class AbstractRestController<TModel extends IdentifiableModel<TI
 	}
 
 
-	@ExceptionHandler
-	public Mono<ResponseEntity<ErrorResponse>> handleError(RepositoryServiceException exception, ServerWebExchange exchange) {
-
-		log.error("Request failed due to a RepositoryServiceException", exception);
-		
-		HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
-		if(exception instanceof RepositoryServiceRetryableException) {
-			status = HttpStatus.INTERNAL_SERVER_ERROR;
-			
-		} else if(exception instanceof RepositoryServiceNonRetryableException) { 
-			status = HttpStatus.BAD_REQUEST;
-		}
-		//Sample error message when serialized to json:
-
-		return Mono.just(new ResponseEntity<ErrorResponse>(new ErrorResponse(
-				ZonedDateTime.now(), 
-				exchange.getRequest().getPath().value(), 
-				status.value(), 
-				status.getReasonPhrase(), 
-				exception.getMessage(), 
-				exchange.getRequest().getId()
-			), status));
-		
-	}
-
-	@ExceptionHandler
-	public Mono<ResponseEntity<ErrorResponse>> handleError(Exception exception, ServerWebExchange exchange) {
-
-		log.error("Request failed due to an unknown exception", exception);
-		
-		HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
-		
-		return Mono.just(new ResponseEntity<ErrorResponse>(new ErrorResponse(
-				ZonedDateTime.now(), 
-				exchange.getRequest().getPath().value(), 
-				status.value(), 
-				status.getReasonPhrase(), 
-				exception.getMessage(), 
-				exchange.getRequest().getId()
-			), status));
-	}
-	
+//	@ExceptionHandler
+//	public Mono<ResponseEntity<ErrorResponse>> handleError(RepositoryServiceException exception, ServerWebExchange exchange) {
+//
+//		log.error("Request failed due to a RepositoryServiceException", exception);
+//		
+//		HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+//		if(exception instanceof RepositoryServiceRetryableException) {
+//			status = HttpStatus.INTERNAL_SERVER_ERROR;
+//			
+//		} else if(exception instanceof RepositoryServiceNonRetryableException) { 
+//			status = HttpStatus.BAD_REQUEST;
+//		}
+//		//Sample error message when serialized to json:
+//
+//		return Mono.just(new ResponseEntity<ErrorResponse>(new ErrorResponse(
+//				ZonedDateTime.now(), 
+//				exchange.getRequest().getPath().value(), 
+//				status.value(), 
+//				status.getReasonPhrase(), 
+//				exception.getMessage(), 
+//				exchange.getRequest().getId()
+//			), status));
+//		
+//	}
+//
+//	@ExceptionHandler
+//	public Mono<ResponseEntity<ErrorResponse>> handleError(Exception exception, ServerWebExchange exchange) {
+//
+//		log.error("Request failed due to an unknown exception", exception);
+//		
+//		HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+//		
+//		return Mono.just(new ResponseEntity<ErrorResponse>(new ErrorResponse(
+//				ZonedDateTime.now(), 
+//				exchange.getRequest().getPath().value(), 
+//				status.value(), 
+//				status.getReasonPhrase(), 
+//				exception.getMessage(), 
+//				exchange.getRequest().getId()
+//			), status));
+//	}
+//	
 }
