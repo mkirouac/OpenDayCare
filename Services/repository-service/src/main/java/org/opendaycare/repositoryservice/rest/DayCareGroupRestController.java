@@ -8,6 +8,7 @@ import org.opendaycare.repositoryservice.service.exception.RepositoryServiceNonR
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -54,15 +55,29 @@ public class DayCareGroupRestController extends AbstractRestController<DayCareGr
 		return service.assignGroupToKid(idGroup, idKid)
 			.then(Mono.just(new ResponseEntity<String>("", HttpStatus.CREATED)))
 			;
-		
-		
 	}
+	
 	@PutMapping("{idGroup}/employees/{idEmployee}") 
 	public Mono<ResponseEntity<Void>> assignGroupToEmployee(@PathVariable Long idGroup, @PathVariable Long idEmployee) {
 		return service.assignGroupToEmployee(idGroup, idEmployee)
 			.then(Mono.just(new ResponseEntity<Void>(HttpStatus.CREATED)));
-		
 	}
+	
+	
+	@DeleteMapping("{idGroup}/kids/{idKid}") 
+	public Mono<ResponseEntity<String>> unassignGroupFromKid(@PathVariable Long idGroup, @PathVariable Long idKid) {
+		return service.unassignGroupFromKid(idGroup, idKid)
+			.then(Mono.just(new ResponseEntity<String>("", HttpStatus.OK)))
+			;
+	}
+	
+	@DeleteMapping("{idGroup}/employees/{idEmployee}") 
+	public Mono<ResponseEntity<Void>> unassignGroupFromEmployee(@PathVariable Long idGroup, @PathVariable Long idEmployee) {
+		return service.unassignGroupFromEmployee(idGroup, idEmployee)
+			.then(Mono.just(new ResponseEntity<Void>(HttpStatus.OK)));
+	}
+	
+	
 	
 
 	private <T> Mono<T>  groupDoesNotExistsError(Long idGroup) {

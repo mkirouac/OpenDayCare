@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuples;
 
 @Service
 public class DayCareGroupServiceImpl extends AbstractRepositoryService<DayCareGroup, Long>
@@ -84,8 +85,11 @@ public class DayCareGroupServiceImpl extends AbstractRepositoryService<DayCareGr
 
 	@Override
 	public Mono<Void> unassignGroupFromEmployee(Long idGroup, Long idEmployee) {
-		DayCareGroupEmployee groupEmployee = new DayCareGroupEmployee(idGroup, idEmployee);
-		return groupEmployeeRepository.delete(groupEmployee);
+		return databaseClient.sql("DELETE from DayCareGroupEmployee WHERE idDayCareGroup = :idGroup AND idEmployee = :idEmployee")
+				.bind("idGroup", idGroup)
+				.bind("idEmployee", idEmployee)
+				.fetch().rowsUpdated()//TODO Throw if ==0
+				.then(Mono.empty());
 	}
 
 	@Override
@@ -125,8 +129,11 @@ public class DayCareGroupServiceImpl extends AbstractRepositoryService<DayCareGr
 
 	@Override
 	public Mono<Void> unassignGroupFromKid(Long idGroup, Long idKid) {
-		DayCareGroupKid groupKid = new DayCareGroupKid(idGroup, idKid);
-		return groupKidRepository.delete(groupKid);
+		return databaseClient.sql("DELETE from DayCareGroupKid WHERE idDayCareGroup = :idGroup AND idKid = :idKid")
+				.bind("idGroup", idGroup)
+				.bind("idKid", idKid)
+				.fetch().rowsUpdated()//TODO Throw if ==0
+				.then(Mono.empty());
 	}
 
 	private RepositoryServiceNonRetryableException groupKidAssociationAlreadyExistsError(

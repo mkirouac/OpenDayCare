@@ -231,6 +231,78 @@ public class DayCareGroupControllerTest {
 	}
 
 	@Test
+	public void deleteKidAssociation_shouldReturn200() {
+
+		DayCareGroup group = new DayCareGroup(null, "Newly with kids and tutors", "Created group with kids and tutors");
+
+		group = webTestClient.post().uri(RESOURCE_PATH).bodyValue(group).exchange().expectStatus().isCreated()
+				.expectBody(DayCareGroup.class).value(k -> assertThat(k.getId()).isNotNull())
+				.value(k -> assertThat(k.getGroupName()).isEqualTo("Newly with kids and tutors"))
+				.value(k -> assertThat(k.getGroupDescription()).isEqualTo("Created group with kids and tutors"))
+				.returnResult().getResponseBody();
+
+		webTestClient.put().uri(RESOURCE_PATH + "/" + group.getId() + "/kids/" + groupKids.get(0).getId()).exchange()
+				.expectStatus().isCreated();
+
+		webTestClient.delete().uri(RESOURCE_PATH + "/" + group.getId() + "/kids/" + groupKids.get(0).getId()).exchange()
+			.expectStatus().isOk();
+		
+		webTestClient.get().uri(RESOURCE_PATH + "/" + group.getId() + "/kids/").exchange()
+			.expectStatus().isOk()
+			.expectBodyList(Kid.class).hasSize(0);
+	
+	}
+	
+	@Test
+	public void deleteEmployeeAssociation_shouldReturn200() {
+
+		DayCareGroup group = new DayCareGroup(null, "Newly with kids and tutors", "Created group with kids and tutors");
+
+		group = webTestClient.post().uri(RESOURCE_PATH).bodyValue(group).exchange().expectStatus().isCreated()
+				.expectBody(DayCareGroup.class).value(k -> assertThat(k.getId()).isNotNull())
+				.value(k -> assertThat(k.getGroupName()).isEqualTo("Newly with kids and tutors"))
+				.value(k -> assertThat(k.getGroupDescription()).isEqualTo("Created group with kids and tutors"))
+				.returnResult().getResponseBody();
+
+		webTestClient.put().uri(RESOURCE_PATH + "/" + group.getId() + "/employees/" + groupEmployees.get(0).getId())
+				.exchange().expectStatus().isCreated();
+
+
+		webTestClient.delete().uri(RESOURCE_PATH + "/" + group.getId() + "/employees/" + groupEmployees.get(0).getId())
+				.exchange().expectStatus().isOk();
+
+		webTestClient.delete().uri(RESOURCE_PATH + "/" + group.getId() + "/employees/" + groupEmployees.get(0).getId())
+			.exchange().expectStatus().isOk()
+			.expectBodyList(Employee.class).hasSize(0);
+
+
+	}
+	
+	
+	@Test
+	public void associatEmployeeTwice_shouldReturn4xx() {
+
+		DayCareGroup group = new DayCareGroup(null, "Newly with kids and tutors", "Created group with kids and tutors");
+
+		group = webTestClient.post().uri(RESOURCE_PATH).bodyValue(group).exchange().expectStatus().isCreated()
+				.expectBody(DayCareGroup.class).value(k -> assertThat(k.getId()).isNotNull())
+				.value(k -> assertThat(k.getGroupName()).isEqualTo("Newly with kids and tutors"))
+				.value(k -> assertThat(k.getGroupDescription()).isEqualTo("Created group with kids and tutors"))
+				.returnResult().getResponseBody();
+
+		webTestClient.put().uri(RESOURCE_PATH + "/" + group.getId() + "/employees/" + groupEmployees.get(0).getId())
+				.exchange().expectStatus().isCreated();
+
+		webTestClient.put().uri(RESOURCE_PATH + "/" + group.getId() + "/employees/" + groupEmployees.get(0).getId())
+				.exchange().expectStatus().is4xxClientError()
+				.expectBody(ErrorResponse.class)
+				.value(e -> assertThat(e.getMessage()).contains("The employee").contains(" is already associated with the group "))
+				.consumeWith(e -> System.out.println(new String(e.getResponseBodyContent())));
+
+	}
+
+	
+	@Test
 	public void associateKidTwice_shouldReturn4xx() {
 
 		//For question: identify a problem and how did you resolve this. Talk about this specific scenario.
@@ -267,7 +339,6 @@ public class DayCareGroupControllerTest {
 
 	}
 
-
 	@Test
 	public void associateKid_kidDoesntExists_shouldReturn4xx() {
 
@@ -287,28 +358,6 @@ public class DayCareGroupControllerTest {
 				.expectStatus().is4xxClientError()
 				.expectBody(ErrorResponse.class)
 				.value(e -> assertThat(e.getMessage()).contains("The kid").contains("doesn't exists"))
-				.consumeWith(e -> System.out.println(new String(e.getResponseBodyContent())));
-
-	}
-	
-	@Test
-	public void associatEmployeeTwice_shouldReturn4xx() {
-
-		DayCareGroup group = new DayCareGroup(null, "Newly with kids and tutors", "Created group with kids and tutors");
-
-		group = webTestClient.post().uri(RESOURCE_PATH).bodyValue(group).exchange().expectStatus().isCreated()
-				.expectBody(DayCareGroup.class).value(k -> assertThat(k.getId()).isNotNull())
-				.value(k -> assertThat(k.getGroupName()).isEqualTo("Newly with kids and tutors"))
-				.value(k -> assertThat(k.getGroupDescription()).isEqualTo("Created group with kids and tutors"))
-				.returnResult().getResponseBody();
-
-		webTestClient.put().uri(RESOURCE_PATH + "/" + group.getId() + "/employees/" + groupEmployees.get(0).getId())
-				.exchange().expectStatus().isCreated();
-
-		webTestClient.put().uri(RESOURCE_PATH + "/" + group.getId() + "/employees/" + groupEmployees.get(0).getId())
-				.exchange().expectStatus().is4xxClientError()
-				.expectBody(ErrorResponse.class)
-				.value(e -> assertThat(e.getMessage()).contains("The employee").contains(" is already associated with the group "))
 				.consumeWith(e -> System.out.println(new String(e.getResponseBodyContent())));
 
 	}
