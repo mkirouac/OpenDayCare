@@ -115,10 +115,11 @@ public class DayCareGroupServiceImpl extends AbstractRepositoryService<DayCareGr
 		DayCareGroupKid groupKid = new DayCareGroupKid(idGroup, idKid);
 
 		return groupRepository.existsById(idGroup).filter(exists -> exists)
-				.switchIfEmpty(groupDoesNotExistsError(idGroup)).then(kidRepository.existsById(idKid))
-				.filter(exists -> exists).switchIfEmpty(kidDoesNotExistsError(idKid))
-				.then(groupKidRepository.save(groupKid)).onErrorMap(DataIntegrityViolationException.class,
-						e -> groupKidAssociationAlreadyExistsError(e, idGroup, idKid));
+					.switchIfEmpty(groupDoesNotExistsError(idGroup))
+				.then(kidRepository.existsById(idKid)).filter(exists -> exists)
+					.switchIfEmpty(kidDoesNotExistsError(idKid))
+				.then(groupKidRepository.save(groupKid))
+					.onErrorMap(DataIntegrityViolationException.class,e -> groupKidAssociationAlreadyExistsError(e, idGroup, idKid));
 	}
 
 	@Override
